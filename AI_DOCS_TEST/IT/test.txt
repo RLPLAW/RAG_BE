@@ -1,0 +1,14 @@
+Subject: Application for the Position of Software Developer
+
+Dear Mr. Nguyen,
+
+I hope this letter finds you well. I am writing to express my interest in the Software Developer position at TechNova Solutions, as advertised on your company website.
+
+With a strong background in Java, Python, and web development, I have developed several applications that focus on usability and performance. I recently completed an internship where I helped improve the performance of a RESTful API by 40%, and I’m eager to bring my skills to a dynamic team like yours.
+
+I am especially drawn to TechNova’s mission of building innovative tech solutions that empower users. I believe my technical skills, combined with my passion for learning and problem-solving, would make me a strong fit for your development team.
+
+Thank you for considering my application. I have attached my resume for your review. I look forward to the opportunity to further discuss how I can contribute to your team.
+
+Sincerely,
+Anna Tran
