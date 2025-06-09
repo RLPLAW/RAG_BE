@@ -1,0 +1,21 @@
+name: Generate and Share .env
+on:
+  workflow_dispatch: # Manual trigger for owners/collaborators
+  pull_request:      # Trigger on PRs from owners/collaborators
+    branches:
+      - main
+jobs:
+  generate-env:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Create .env file
+        run: echo "API_KEY=${{ secrets.API_KEY }}" > .env
+        env:
+          API_KEY: ${{ secrets.API_KEY }}
+      - name: Upload .env as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: env-file
+          path: .env
