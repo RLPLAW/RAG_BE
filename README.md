@@ -1,4 +1,4 @@
-### NOT TESTED ON **MAC**
+### NOT TESTED ON ***MAC***
 
 # RAG-Law
 
