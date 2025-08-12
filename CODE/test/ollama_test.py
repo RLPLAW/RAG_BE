@@ -1,52 +1,23 @@
-from langchain_ollama import OllamaLLM
-from dotenv import load_dotenv
+import sys
 import os
 
-load_dotenv()
-OLLAMA_MODEL_NAME = os.getenv('OLLAMA_MODEL_NAME')
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from core.llm.ollama_client import get_embedding, chat_with_ollama
 
+# Test embedding
+text = "Vietnam is a country in Southeast Asia."
+embedding = get_embedding(text)
 
-def test_ollama_model(input) -> str:
-    try:
-        llm = OllamaLLM(model=OLLAMA_MODEL_NAME)
-        response = llm.invoke(input)
-        return response
-    except Exception as e:
-        print("Model failed:", e)
-        return None
+if embedding:
+    print("Embedding generated successfully.")
+    print(f"Length: {len(embedding)} | First 5 values: {embedding[:5]}")
+else:
+    print("Failed to generate embedding.")
 
-def test_model_response_en() -> None:
-    input_text = "What is the capital of France? Answer in one short sentence."
-    response = test_ollama_model(input_text)
-    print("English response test:", input_text)
-    
+# Test chat
+query = "What is the capital of Vietnam?"
+context = [{'text': "Vietnam's capital is Hanoi.", 'similarity': 0.95}]
 
-    if response:
-        print("                     |_Response:", response)
-    else:
-        print("                     |_No Response")
-        
+response = chat_with_ollama(query, context)
 
-def test_model_response_vn() -> None:
-    input_text = "Thủ đô của Pháp là gì? Nói ngắn gọn trong 1 câu"
-    response = test_ollama_model(input_text)
-    print("Vietnamese response test:", input_text)
-    
-    if response:
-        print("                        |_Response:", response)
-    else:
-        print("                        |_No Response")
-    
-
-if __name__ == "__main__":
-    print("========================================================================================================================")
-    print("Running basic model response test...")
-    test_model_response_en()
-    test_model_response_vn()
-    print("========================================================================================================================")
-    custom_response = test_ollama_model(input("Enter your custom question: "))
-    if custom_response:
-        print("Response:", custom_response)
-    else:
-        print("                          |_No Response")
-    print("========================================================================================================================")
+print("\nChat Response:\n", response)

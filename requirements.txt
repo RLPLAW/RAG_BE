@@ -1,0 +1,24 @@
+redis
+pymongo
+google-api-python-client
+google-auth
+google-auth-oauthlib
+python-dotenv
+pymupdf
+flask
+flask-cors
+
+# Core dependencies
+ollama
+PyMuPDF
+langchain-community
+sentence-transformers
+chromadb
+numpy
+pathlib
+huggingface-hub
+transformers
+torch
+
+# Optional for better performance
+faiss-cpu

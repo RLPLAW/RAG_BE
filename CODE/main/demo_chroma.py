@@ -126,29 +126,29 @@ def rag_pipeline(query_text):
 query = "What is artificial intelligence?"  # Change the query as needed
 response = rag_pipeline(query)
 print("######## Response from LLM ########\n", response)
-Output
+# Output
 
-Running the above Python script will retrieve a relevant document, use it as context, and send it along with the prompt to the LLM to generate a response.
-
-######## Augmented Prompt ########
-Context: Artificial intelligence is the simulation of human intelligence processes by machines.
-
-Question: What is artificial intelligence?
-Answer:
-######## Response from LLM ########
- Artificial Intelligence (AI) refers to the development of computer systems that can perform tasks that typically require human intelligence, such as learning, problem-solving, decision-making, and perception.
-Let’s give it a try with a different prompt
-
-Prompt 2
-Write a program that prints ‘Hello’ followed by a given name.
-
-Output 2
+# Running the above Python script will retrieve a relevant document, use it as context, and send it along with the prompt to the LLM to generate a response.
 
 ######## Augmented Prompt ########
-Context: Python is a programming language that lets you work quickly and integrate systems more effectively.
+# Context: Artificial intelligence is the simulation of human intelligence processes by machines.
 
-Question: Write a program that prints 'Hello' followed by a given name.
-Answer:
+# Question: What is artificial intelligence?
+# Answer:
+# ######## Response from LLM ########
+#  Artificial Intelligence (AI) refers to the development of computer systems that can perform tasks that typically require human intelligence, such as learning, problem-solving, decision-making, and perception.
+# Let’s give it a try with a different prompt
+
+# Prompt 2
+# Write a program that prints ‘Hello’ followed by a given name.
+
+# Output 2
+
+# ######## Augmented Prompt ########
+# Context: Python is a programming language that lets you work quickly and integrate systems more effectively.
+
+# Question: Write a program that prints 'Hello' followed by a given name.
+# Answer:
 ######## Response from LLM ########
  def greet(name):
     """Prints a personalized greeting message."""
