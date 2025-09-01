@@ -29,7 +29,7 @@ if __name__ == "__main__":
             print("\nModified Report:\n")
             print(result)
         else:
-            print("\n⚠ Không tạo được báo cáo chỉnh sửa. Kiểm tra lại tên file hoặc nội dung.")
+            print("\nKhông tạo được báo cáo chỉnh sửa. Kiểm tra lại tên file hoặc nội dung.")
 
     except Exception as e:
         print(f"\nLỗi: {e}")
