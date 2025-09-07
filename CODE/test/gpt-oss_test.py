@@ -13,10 +13,10 @@ MODEL = "gpt-oss:20b"  # Use gpt-oss:20b for Mac compatibility
 EMBED_MODEL = "nomic-embed-text:latest"
 
 # --- Font setup for PDF (support Vietnamese) ---
-FONT_PATH = "/System/Library/Fonts/Supplemental/DejaVuSans.ttf"
-if not Path(FONT_PATH).exists():
-    raise FileNotFoundError(f"Font file not found at {FONT_PATH}. Please install DejaVuSans or specify another font.")
-pdfmetrics.registerFont(TTFont('DejaVuSans', FONT_PATH))
+# FONT_PATH = "/System/Library/Fonts/Supplemental/DejaVuSans.ttf"
+# if not Path(FONT_PATH).exists():
+#     raise FileNotFoundError(f"Font file not found at {FONT_PATH}. Please install DejaVuSans or specify another font.")
+# pdfmetrics.registerFont(TTFont('DejaVuSans', FONT_PATH))
 
 # --- Check Ollama server status ---
 def check_ollama_status():
@@ -61,15 +61,15 @@ def export_to_txt(content, output_path):
 def export_to_pdf(content, output_path):
     try:
         c = canvas.Canvas(output_path, pagesize=A4)
-        c.setFont("DejaVuSans", 12)
+        c.setFont("Helvetica", 12)
         text_object = c.beginText(40, 800)
-        text_object.setFont("DejaVuSans", 12)
+        text_object.setFont("Helvetica", 12)
         y_position = 800
         for line in content.split("\n"):
             if y_position < 40:
                 c.drawText(text_object)
                 c.showPage()
-                c.setFont("DejaVuSans", 12)
+                c.setFont("Helvetica", 12)
                 text_object = c.beginText(40, 800)
                 y_position = 800
             text_object.textLine(line)

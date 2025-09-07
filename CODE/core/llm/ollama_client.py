@@ -1,35 +1,50 @@
-import ollama
-import os
-import requests
+from PyPDF2 import PdfReader
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+import subprocess
 
-# --- Config ---
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "127.0.0.1:11434")
-os.environ["OLLAMA_HOST"] = OLLAMA_HOST
-OLLAMA_API_URL = f"http://{OLLAMA_HOST}/api/generate"
-OLLAMA_EMBED_URL = f"http://{OLLAMA_HOST}/api/embeddings"
+# Hàm chia text thành các chunk
+def chunk_text(text, max_chars=3000):
+    chunks = []
+    start = 0
+    while start < len(text):
+        end = start + max_chars
+        # tránh cắt giữa câu
+        if end < len(text):
+            last_period = text.rfind('.', start, end)
+            if last_period != -1:
+                end = last_period + 1
+        chunks.append(text[start:end].strip())
+        start = end
+    return chunks
 
-# --- Get local embedding from Ollama ---
-def get_embedding(text, model="nomic-embed-text:latest"):
-    try:
-        response = ollama.embeddings(model=model, prompt=text)
-        return response["embedding"]
-    except Exception as e:
-        print(f"Error generating embedding: {e}")
-        return None
+# 1️⃣ Đọc PDF
+reader = PdfReader("report.pdf")
+full_text = ""
+for page in reader.pages:
+    full_text += page.extract_text() + "\n"
 
-# --- Chat with Ollama using retrieved context ---
-def chat_with_ollama(prompt, model="llama3:latest"):
-    try:
-        response = requests.post(
-            OLLAMA_API_URL,
-            json={
-                "model": model,
-                "prompt": prompt,
-                "stream": False
-            }
-        )
-        response.raise_for_status()
-        return response.json().get("response", "").strip()
-    except Exception as e:
-        print(f"Ollama error: {e}")
-        return None
+# 2️⃣ Chia chunk
+chunks = chunk_text(full_text)
+
+# 3️⃣ Gửi từng chunk cho Ollama và lấy kết quả
+translated_chunks = []
+for i, chunk in enumerate(chunks):
+    prompt = f"Hãy dịch nội dung sau sang tiếng Anh:\n\n{chunk}"
+    result = subprocess.run(
+        ["ollama", "run", "llama3"],
+        input=prompt.encode("utf-8"),
+        capture_output=True
+    )
+    output = result.stdout.decode("utf-8")
+    translated_chunks.append(output)
+    print(f"Chunk {i+1}/{len(chunks)} xong")
+
+# 4️⃣ Ghép kết quả và xuất ra PDF
+c = canvas.Canvas("report_translated.pdf", pagesize=letter)
+text_obj = c.beginText(40, 750)
+for chunk in translated_chunks:
+    for line in chunk.split("\n"):
+        text_obj.textLine(line)
+c.drawText(text_obj)
+c.save()

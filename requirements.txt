@@ -25,3 +25,4 @@ langchain_huggingface
 
 # Optional for better performance
 faiss-cpu
+reportlab
