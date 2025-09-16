@@ -19,6 +19,10 @@ pathlib
 huggingface-hub
 transformers
 torch
+langchain
+langchain-chroma
+langchain_huggingface
 
 # Optional for better performance
 faiss-cpu
+reportlab
