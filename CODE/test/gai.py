@@ -1,4 +1,4 @@
-import subprocess
+import requests
 from PyPDF2 import PdfReader
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
@@ -39,12 +39,11 @@ print(f"Tổng số chunks: {len(chunks)}")
 translated_chunks = []
 for i, chunk in enumerate(chunks):
     prompt = f"Hãy dịch nội dung sau sang tiếng Việt và giữ nguyên định dạng cơ bản:\n\n{chunk}"
-    result = subprocess.run(
-        ["ollama", "run", "llama3"],
-        input=prompt.encode("utf-8"),
-        capture_output=True
+    result = requests.post(
+        "https://ten-maps-throw.loca.lt/api/generate",
+        json={"model": "llama3", "prompt": prompt}
     )
-    output = result.stdout.decode("utf-8").strip()
+    output = result.text.strip()
     translated_chunks.append(output)
     print(f"Chunk {i+1}/{len(chunks)} dịch xong")
 
