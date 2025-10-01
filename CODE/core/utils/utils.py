@@ -13,7 +13,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_LEFT, TA_JUSTIFY
-from io.document_structure import DocumentStructure
+from ..io.document_structure import DocumentStructure
 
 # Proper structlog configuration
 structlog.configure(
