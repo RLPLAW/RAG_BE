@@ -1,4 +1,3 @@
-from asyncio.log import logger
 from concurrent.futures import ThreadPoolExecutor
 import logging
 from functools import lru_cache
@@ -7,9 +6,7 @@ from charset_normalizer import detect
 from pypdf import PdfReader
 import structlog # type: ignore
 
-class Translator:
-
-    structlog.configure(
+structlog.configure(
         processors=[
             structlog.processors.TimeStamper(fmt="iso"),
             structlog.stdlib.add_log_level,
@@ -21,7 +18,9 @@ class Translator:
         cache_logger_on_first_use=True,
     )
 
-    logger = structlog.get_logger()
+logger = structlog.get_logger()
+
+class Translator:
 
     @lru_cache(maxsize=100)
     def _detect_encoding(self, file_path: str) -> Optional[str]:

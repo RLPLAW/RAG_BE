@@ -6,6 +6,10 @@ from typing import Dict, Any, Optional, List
 from tqdm.asyncio import tqdm_asyncio
 from core.core.chunking import ChunkData
 from core.config import TranslationConfig
+from CODE.core.utils.utils import ContentBuilder
+from core.io.document_structure import DocumentStructure
+
+contentBuilder = ContentBuilder()
 
 # --- Logging setup ---
 structlog.configure(
@@ -19,8 +23,8 @@ structlog.configure(
     wrapper_class=structlog.stdlib.BoundLogger,
     cache_logger_on_first_use=True,
 )
-logger = structlog.get_logger()
 
+logger = structlog.get_logger()
 
 class ApiClient:
     def __init__(self, config: Optional[TranslationConfig] = None):
@@ -43,9 +47,7 @@ class ApiClient:
         if self._session and not self._session.closed:
             await self._session.close()
 
-    # ------------------------
     # API Connectivity Check
-    # ------------------------
     @staticmethod
     async def test_api_connection(api_url: str, session: Optional[aiohttp.ClientSession] = None) -> Dict[str, Any]:
         try:
@@ -81,9 +83,7 @@ class ApiClient:
             logger.error("API connection failed", error=test_result.get("error"))
             raise Exception(f"API setup failed: {test_result.get('error')}")
 
-    # ------------------------
     # Chunk Processing to API
-    # ------------------------
     async def process_chunk_async(
         self, chunk_data: ChunkData, operation: str = "translate", user_prompt: Optional[str] = None
     ) -> Optional[str]:
@@ -170,11 +170,58 @@ class ApiClient:
             logger.error("Batch processing failed after max retries")
             return [None] * len(chunk_data_list)
 
-    # Stub for single chunk
     async def _process_single_chunk(
         self, chunk_data: ChunkData, operation: str, user_prompt: Optional[str]
     ) -> Optional[str]:
-        logger.warning("Single chunk processing not implemented yet")
+        if self._session is None:
+            logger.error("Session not initialized")
+            return None
+
+        # Build prompt
+        if operation == "translate":
+            prompt = self._create_translation_prompt(chunk_data.content)
+            system_msg = "You are a professional translator. Translate accurately while preserving ALL formatting."
+        else:
+            prompt = self._create_rewrite_prompt(chunk_data.content, user_prompt)
+            system_msg = "You are a professional rewriter. Rewrite accurately while preserving ALL formatting."
+
+        estimated_tokens = len(chunk_data.content) // 4 + 100
+        payload = {
+            "model": self.config.model,
+            "messages": [
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": prompt},
+            ],
+            "max_tokens": min(estimated_tokens * 2, self.config.max_tokens),
+            "temperature": self.config.temperature,
+        }
+
+        for attempt in range(self.config.max_retries):
+            try:
+                async with self._session.post(self.config.api_url, json=payload) as response:
+                    if response.status != 200:
+                        text = await response.text()
+                        logger.error("HTTP error", status=response.status, response_text=text[:200], attempt=attempt + 1)
+                        if attempt < self.config.max_retries - 1:
+                            await asyncio.sleep(self.config.retry_delay)
+                        continue
+
+                    result = await response.json()
+                    if not result.get("choices") or not result["choices"][0].get("message", {}).get("content"):
+                        logger.error("Invalid response structure", response=result, attempt=attempt + 1)
+                        if attempt < self.config.max_retries - 1:
+                            await asyncio.sleep(self.config.retry_delay)
+                        continue
+
+                    return result["choices"][0]["message"]["content"]
+
+            except Exception as e:
+                logger.error("API error", error=str(e), attempt=attempt + 1)
+                if attempt < self.config.max_retries - 1:
+                    await asyncio.sleep(self.config.retry_delay)
+                continue
+
+        logger.error("Processing failed after max retries")
         return None
     
     def _create_translation_prompt(self, content: str) -> str:
@@ -196,6 +243,76 @@ class ApiClient:
                     IMPORTANT: Preserve all formatting, structure, headings, and paragraph breaks exactly as they appear in the original.
 
                     Text to rewrite: {content}"""
+    
+    def intelligent_chunk(self, doc_structure: DocumentStructure, max_chunk_size: int = 2000) -> List[ChunkData]:
+        """
+        Create intelligent chunks based on document structure.
+        Tries to keep paragraphs and sections together.
+        """
+        chunks = []
+        current_chunk = []
+        current_size = 0
+        
+        paragraphs = doc_structure.structure.get('paragraphs', [])
+        
+        for para in paragraphs:
+            para_size = len(para)
+            
+            # If single paragraph exceeds max size, split it
+            if para_size > max_chunk_size:
+                if current_chunk:
+                    chunks.append(ChunkData(
+                        content="\n\n".join(current_chunk),
+                        chunk_num=len(chunks) 
+                    ))
+                    current_chunk = []
+                    current_size = 0
+                
+                # Split large paragraph into sentences
+                sentences = para.split('. ')
+                temp_chunk = []
+                temp_size = 0
+                
+                for sent in sentences:
+                    sent_size = len(sent) + 2  # +2 for '. '
+                    if temp_size + sent_size > max_chunk_size and temp_chunk:
+                        chunks.append(ChunkData(
+                            content='. '.join(temp_chunk) + '.',
+                            chunk_num=len(chunks) 
+                        ))
+                        temp_chunk = []
+                        temp_size = 0
+                    
+                    temp_chunk.append(sent)
+                    temp_size += sent_size
+                
+                if temp_chunk:
+                    chunks.append(ChunkData(
+                        content='. '.join(temp_chunk),
+                        chunk_num=len(chunks) 
+                    ))
+                continue
+            
+            # Normal paragraph handling
+            if current_size + para_size > max_chunk_size and current_chunk:
+                chunks.append(ChunkData(
+                    content="\n\n".join(current_chunk),
+                    chunk_num=len(chunks) 
+                ))
+                current_chunk = []
+                current_size = 0
+            
+            current_chunk.append(para)
+            current_size += para_size
+        
+        # Add remaining content
+        if current_chunk:
+            chunks.append(ChunkData(
+                content="\n\n".join(current_chunk),
+                chunk_num=len(chunks) 
+            ))
+        
+        return chunks
         
     async def rewrite_file(self, input_file: str, user_prompt: Optional[str] = None,
                                output_pdf: Optional[str] = None, output_txt: Optional[str] = None):
@@ -204,19 +321,15 @@ class ApiClient:
     async def _process_file(self, input_file: str, operation: str, user_prompt: Optional[str],
                                 output_pdf: Optional[str], output_txt: Optional[str]):
         try:
-            
-            # Debug: Log available methods
-            logger.debug("Available methods", methods=[m for m in dir(self) if callable(getattr(self, m))])
-             
             # Determine if input is PDF or text
             input_path = Path(input_file)
             if input_path.suffix.lower() not in {'.pdf', '.txt'}:
                 raise ValueError(f"Unsupported file type: {input_path.suffix}. Only .pdf and .txt are supported.")
             
             if input_path.suffix.lower() == '.pdf':
-                full_text = self._extract_from_pdf(input_file)
+                full_text = contentBuilder.extract_from_pdf(input_file)
             else:
-                full_text = self.extract_text_from_file(input_file)
+                full_text = contentBuilder.extract_text_from_file(input_file)
             logger.info("Text extracted", length=len(full_text))
             
             doc_structure = DocumentStructure(full_text)
@@ -253,14 +366,21 @@ class ApiClient:
             
             full_result = "\n\n".join(processed_chunks)
             
-            input_path = Path(input_file)
+            # Generate output filenames
             suffix = "_vietnamese" if operation == "translate" else "_rewritten"
             if output_pdf is None:
                 output_pdf = f"{input_path.stem}{suffix}.pdf"
             if output_txt is None:
                 output_txt = f"{input_path.stem}{suffix}.txt"
             
-            self.create_formatted_pdf(full_result, output_pdf, doc_structure)
+            # Save outputs
+            contentBuilder.create_formatted_pdf(full_result, output_pdf, doc_structure)
+            
+            # Optionally save as text file
+            if output_txt:
+                with open(output_txt, 'w', encoding='utf-8') as f:
+                    f.write(full_result)
+                logger.info("Text file created", path=output_txt)
                             
         except Exception as e:
             logger.error("Workflow failed", error=str(e))

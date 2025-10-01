@@ -1,3 +1,52 @@
+import asyncio
+from pathlib import Path
+from core.core.api_client import ApiClient
+from core.core.translator import Translator
+from core.config import TranslationConfig
+import structlog # type: ignore
+
+def check_dependencies():
+    missing = []
+    try:
+        import PyPDF2
+    except ImportError:
+        missing.append("PyPDF2")
+    try:
+        import reportlab
+    except ImportError:
+        missing.append("reportlab")
+    try:
+        import charset_normalizer
+    except ImportError:
+        missing.append("charset-normalizer")
+    try:
+        import structlog # type: ignore
+    except ImportError:
+        missing.append("structlog")
+    try:
+        import tqdm
+    except ImportError:
+        missing.append("tqdm")
+    
+    if missing:
+        print(f"Missing dependencies: {', '.join(missing)}")
+        print("Install with: pip install " + " ".join(missing))
+        exit(1)
+
+structlog.configure(
+        processors = [
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.stdlib.add_log_level,
+            structlog.processors.JSONRenderer()
+        ],
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
+        cache_logger_on_first_use=True
+    )
+
+logger = structlog.get_logger()
+
 def main():
     check_dependencies()
     print("=== Optimized PDF/TXT Translator ===")
@@ -33,7 +82,7 @@ def main():
         try:
             print(f"\nInitializing translator with API: {config.api_url}")
             print(f"Max concurrent requests: {config.max_concurrent_requests}")
-            async with OptimizedPDFTranslator(config) as translator:
+            async with Translator(config) as translator:
                 if operation in ['r', 'rewrite']:
                     await translator.rewrite_file_async(input_file, user_prompt, output_pdf, output_txt)
                     print("Rewrite completed successfully!")
