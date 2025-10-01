@@ -2,9 +2,14 @@ from concurrent.futures import ThreadPoolExecutor
 import logging
 from functools import lru_cache
 from typing import Optional, Dict, Any, Tuple
+import aiohttp
 from charset_normalizer import detect
 from pypdf import PdfReader
 import structlog # type: ignore
+from core.api_client import ApiClient
+from config import TranslationConfig
+
+apiClient = ApiClient()
 
 structlog.configure(
         processors=[
@@ -22,6 +27,25 @@ logger = structlog.get_logger()
 
 class Translator:
 
+    def __init__(self, config: TranslationConfig):
+        self.config = apiClient.config
+        self._session: Optional[aiohttp.ClientSession] = None
+
+    async def __aexit__(self, exc_type, exc, tb):
+        if self._session and not self._session.closed:
+            await self._session.close()
+    
+    async def __aenter__(self):
+        connector = aiohttp.TCPConnector(limit=10, limit_per_host=5)
+        timeout = aiohttp.ClientTimeout(total=apiClient.config.request_timeout)
+        self._session = aiohttp.ClientSession(
+            connector=connector,
+            timeout=timeout,
+            headers={"Content-Type": "application/json"},
+        )
+        await apiClient._test_api_setup()
+        return self
+    
     @lru_cache(maxsize=100)
     def _detect_encoding(self, file_path: str) -> Optional[str]:
         """Detect file encoding using charset-normalizer."""
@@ -30,7 +54,7 @@ class Translator:
                 result: Dict[str, Any] = detect(f.read(4096))  # pyright: ignore[reportAssignmentType] # Read 4KB for detection
 
                 if result.get("encoding") and result.get("confidence", 0.0) > 0.8:
-                    self.logger.debug(
+                    logger.debug(
                         "Encoding detected for %s: %s (confidence=%.2f)",
                         file_path,
                         result["encoding"],
@@ -38,7 +62,7 @@ class Translator:
                     )
                     return result["encoding"]
 
-                self.logger.debug(
+                logger.debug(
                     "Encoding detection not reliable for %s: %s (confidence=%.2f)",
                     file_path,
                     result.get("encoding"),
@@ -47,7 +71,7 @@ class Translator:
                 return None
 
         except Exception as e:
-            self.logger.warning("Encoding detection failed for %s: %s", file_path, str(e))
+            logger.warning("Encoding detection failed for %s: %s", file_path, str(e))
             return None
 
     def extract_text_from_file(self, file_path: str) -> str:
@@ -64,12 +88,12 @@ class Translator:
             try:
                 with open(file_path, "r", encoding=encoding, buffering=8192) as f:
                     content = f.read()
-                self.logger.info("Text extracted from %s", file_path)
+                logger.info("Text extracted from %s", file_path)
                 if not content.strip():
                     raise ValueError("Text file is empty")
                 return content.strip()
             except Exception as e:
-                self.logger.debug("Encoding failed for %s: %s", encoding, str(e))
+                logger.debug("Encoding failed for %s: %s", encoding, str(e))
                 continue
 
         raise ValueError(f"Failed to extract text from {file_path}")
@@ -110,3 +134,5 @@ class Translator:
         except Exception as e:
             logger.error("Failed to extract text from PDF", str(e))
             raise
+
+    

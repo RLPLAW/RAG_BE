@@ -4,10 +4,10 @@ import aiohttp
 import structlog  # type: ignore
 from typing import Dict, Any, Optional, List
 from tqdm.asyncio import tqdm_asyncio
-from core.core.chunking import ChunkData
-from core.config import TranslationConfig
-from CODE.core.utils.utils import ContentBuilder
-from core.io.document_structure import DocumentStructure
+from core.chunking import ChunkData
+from config import TranslationConfig
+from utils.utils import ContentBuilder
+from io.document_structure import DocumentStructure
 
 contentBuilder = ContentBuilder()
 
@@ -317,6 +317,10 @@ class ApiClient:
     async def rewrite_file(self, input_file: str, user_prompt: Optional[str] = None,
                                output_pdf: Optional[str] = None, output_txt: Optional[str] = None):
         await self._process_file(input_file, "rewrite", user_prompt, output_pdf, output_txt)
+    
+    async def translate_file(self, input_file: str, output_pdf: Optional[str] = None, 
+                                 output_txt: Optional[str] = None):
+        await self._process_file(input_file, "translate", None, output_pdf, output_txt)
     
     async def _process_file(self, input_file: str, operation: str, user_prompt: Optional[str],
                                 output_pdf: Optional[str], output_txt: Optional[str]):

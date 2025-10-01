@@ -1,8 +1,8 @@
 import asyncio
 from pathlib import Path
-from core.core.api_client import ApiClient
-from core.core.translator import Translator
-from core.config import TranslationConfig
+from core.translator import Translator
+from config import TranslationConfig
+from core.api_client import ApiClient
 import structlog # type: ignore
 
 def check_dependencies():
@@ -47,6 +47,8 @@ structlog.configure(
 
 logger = structlog.get_logger()
 
+apiClient = ApiClient()
+
 def main():
     check_dependencies()
     print("=== Optimized PDF/TXT Translator ===")
@@ -84,10 +86,10 @@ def main():
             print(f"Max concurrent requests: {config.max_concurrent_requests}")
             async with Translator(config) as translator:
                 if operation in ['r', 'rewrite']:
-                    await translator.rewrite_file_async(input_file, user_prompt, output_pdf, output_txt)
+                    await apiClient.rewrite_file(input_file, user_prompt, output_pdf, output_txt)
                     print("Rewrite completed successfully!")
                 else:
-                    await translator.translate_file_async(input_file, output_pdf, output_txt)
+                    await apiClient.translate_file(input_file, output_pdf, output_txt)
                     print("Translation completed successfully!")
         except Exception as e:
             logger.error("Operation failed", error=str(e))
