@@ -6,7 +6,7 @@ import aiohttp
 from charset_normalizer import detect
 from pypdf import PdfReader
 import structlog # type: ignore
-from api_client import ApiClient
+from core.api_client import ApiClient
 from config import TranslationConfig
 
 apiClient = ApiClient()

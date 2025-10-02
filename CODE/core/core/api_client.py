@@ -4,10 +4,10 @@ import aiohttp
 import structlog  # type: ignore
 from typing import Dict, Any, Optional, List
 from tqdm.asyncio import tqdm_asyncio
-from chunking import ChunkData
+from core.chunking import ChunkData
 from config import TranslationConfig
 from utils.utils import ContentBuilder
-from ..io.document_structure import DocumentStructure
+from io_utils.document_structure import DocumentStructure
 
 contentBuilder = ContentBuilder()
 

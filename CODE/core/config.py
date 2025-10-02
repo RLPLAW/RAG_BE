@@ -1,5 +1,5 @@
 import os
-from attr import dataclass
+from dataclasses import dataclass
 import structlog # type: ignore
 
 structlog.configure(
@@ -49,7 +49,8 @@ class TranslationConfig:
     
     @classmethod
     def from_env_or_input(cls) -> 'TranslationConfig':
-        api_url = os.getenv("API_URL", input("Enter API URL (press Enter for default): ").strip() or cls.api_url)
+        default_api_url = "http://127.0.0.1:1234/v1/chat/completions"
+        api_url = os.getenv("API_URL", input("Enter API URL (press Enter for default): ").strip() or default_api_url)
         config = cls(api_url = api_url)
         
         if input("Configure advanced settings? (y/n): ").lower().strip() == 'y':

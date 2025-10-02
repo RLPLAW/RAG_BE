@@ -2,7 +2,7 @@ import hashlib
 from typing import List, Dict, Any, Self
 from dataclasses import dataclass, field
 
-from ..io.document_structure import DocumentStructure
+from io_utils.document_structure import DocumentStructure
 import structlog  # type: ignore
 
 structlog.configure(
