@@ -1,7 +1,7 @@
 import os
 import structlog  # type: ignore
 from pathlib import Path
-from typing import Optional, Dict, Any, Tuple
+from typing import Mapping, Optional, Dict, Any, Tuple
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from pypdf import PdfReader
@@ -30,7 +30,6 @@ structlog.configure(
 
 logger = structlog.get_logger()
 
-
 class ContentBuilder:
     
     @lru_cache(maxsize=100)
@@ -38,7 +37,7 @@ class ContentBuilder:
         """Detect file encoding using chardet."""
         try:
             with open(file_path, 'rb') as f:
-                result: Dict[str, Any] = detect(f.read(4096))  # Read 4KB for detection
+                result: Mapping[str, Any] = detect(f.read(4096))  # Read 4KB for detection
                 if result['encoding'] and result.get('confidence', 0.0) > 0.8:
                     logger.debug("Encoding detected", file=file_path, encoding=result['encoding'], confidence=result['confidence'])
                     return result['encoding']
@@ -169,7 +168,7 @@ class ContentBuilder:
                     continue
                 
                 # Check if it's a heading
-                if DocumentStructure._is_heading(para_text):
+                if doc_structure._is_heading(para_text):
                     p = Paragraph(para_text, heading_style)
                     story.append(p)
                 else:

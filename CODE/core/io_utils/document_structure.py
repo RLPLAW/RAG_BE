@@ -1,4 +1,3 @@
-from functools import lru_cache
 import re
 
 class DocumentStructure:
@@ -7,8 +6,9 @@ class DocumentStructure:
         self._lines = text.split('\n')
         self.structure = self._analyze_structure()
 
-    @lru_cache(maxsize=1000)
-    def _is_heading(self, line: str) -> bool:
+    @staticmethod
+    def is_heading(line: str) -> bool:
+        """Check if a line is a heading - static method for external use"""
         stripped = line.strip()
         if not stripped or len(stripped) > 100:
             return False
@@ -28,6 +28,10 @@ class DocumentStructure:
                 not stripped.endswith(('.', '!', '?', ';', ':')) and
                 len(stripped.split()) <= 8 and
                 any(word[0].isupper() for word in stripped.split() if word))
+    
+    def _is_heading(self, line: str) -> bool:
+        """Instance method that calls the static method"""
+        return self.is_heading(line)
     
     def _analyze_structure(self):
         structure = {
@@ -68,6 +72,7 @@ class DocumentStructure:
                     'end_line': i,
                     'length': len(line)
                 })
+                paragraph_start = i + 1
 
             else:
                 current_paragraph.append(line)
