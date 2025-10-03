@@ -20,6 +20,10 @@ except ImportError:
     exit(1)
 
 try:
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+    from reportlab.platypus import SimpleDocTemplate, Paragraph
+    from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.lib.pagesizes import letter
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
@@ -686,6 +690,8 @@ class OptimizedPDFTranslator:
     def create_formatted_pdf_optimized(self, text: str, filename: str, 
                                      doc_structure: OptimizedDocumentStructure):
         try:
+            pdfmetrics.registerFont(UnicodeCIDFont('HeiseiMin-W3'))
+
             doc = SimpleDocTemplate(
                 filename, 
                 pagesize=letter,
@@ -745,22 +751,72 @@ class OptimizedPDFTranslator:
         except Exception as e:
             logger.error("PDF creation failed", error=str(e))
             raise
-    
+
     @lru_cache(maxsize=500)
     def _is_heading_for_pdf(self, text: str) -> bool:
+        """
+        Determine if a text line should be formatted as a heading in PDF.
+        """
         text = text.strip()
         
-        if len(text) > 100 or text.endswith(('.', '!', '?')):
-            return False
-        
+        # Check for common heading patterns
         heading_patterns = [
-            re.compile(r'^[A-Z\s]{3,}$'),
-            re.compile(r'^\d+\.\s+[A-Z]'),
-            re.compile(r'^Chapter\s+\d+', re.IGNORECASE),
-            re.compile(r'^Section\s+\d+', re.IGNORECASE),
+            r'^#{1,6}\s+',  # Markdown headers (# ## ### etc.)
+            r'^[A-Z][A-Z\s]{2,}:?\s*$',  # ALL CAPS headings
+            r'^\d+\.\s+[A-Z]',  # Numbered sections (1. Introduction)
+            r'^[IVX]+\.\s+[A-Z]',  # Roman numeral sections (I. Introduction)
+            r'^Chapter\s+\d+',  # Chapter headings
+            r'^Section\s+\d+',  # Section headings
+            r'^Part\s+[IVX\d]+',  # Part headings
         ]
         
-        return any(pattern.match(text) for pattern in heading_patterns)
+        for pattern in heading_patterns:
+            if re.match(pattern, text, re.IGNORECASE):
+                return True
+        
+        # Check if text is short and starts with capital letter (likely a heading)
+        if len(text) < 80 and text[0].isupper() and not text.endswith('.'):
+            # Additional checks to avoid false positives
+            word_count = len(text.split())
+            if 2 <= word_count <= 10:  # Reasonable heading length
+                return True
+        
+        # Check if line ends with colon (often indicates a heading or section start)
+        if text.endswith(':') and len(text.split()) <= 8:
+            return True
+            
+        return False
+
+    def _escape_html_chars(self, text: str) -> str:
+        """
+        Escape HTML/XML characters that might cause issues in ReportLab paragraphs.
+        """
+        html_escape_chars = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#x27;'
+        }
+        
+        for char, escape in html_escape_chars.items():
+            text = text.replace(char, escape)
+        
+        return text
+
+    def _handle_special_formatting(self, text: str, style: ParagraphStyle) -> Paragraph:
+        """
+        Handle special text formatting like bold, italic, etc.
+        """
+        # Escape HTML characters first
+        text = self._escape_html_chars(text)
+        
+        # Handle markdown-style formatting
+        text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)  # Bold
+        text = re.sub(r'\*(.*?)\*', r'<i>\1</i>', text)      # Italic
+        text = re.sub(r'`(.*?)`', r'<font name="Courier">\1</font>', text)  # Code
+        
+        return Paragraph(text, style)
 
 # Convenience functions
 async def translate_file_optimized(input_file: str, config: Optional[TranslationConfig] = None,
@@ -789,7 +845,7 @@ def check_dependencies():
     except ImportError:
         missing.append("charset-normalizer")
     try:
-        import structlog
+        import structlog # type: ignore
     except ImportError:
         missing.append("structlog")
     try:
